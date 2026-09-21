@@ -21,8 +21,10 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class EmployeeService {
 
+    // UUIDs are useful for troubleshooting, but personal employee details should stay out of logs.
     private static final Logger LOGGER = LoggerFactory.getLogger(EmployeeService.class);
 
+    // The challenge calls for in-memory storage. This map also handles concurrent requests safely.
     private final Map<UUID, Employee> employees = new ConcurrentHashMap<>();
 
     public EmployeeService() {
@@ -33,6 +35,7 @@ public class EmployeeService {
 
     public List<Employee> getAllEmployees() {
         List<Employee> result = new ArrayList<>(employees.values());
+        // A map does not guarantee display order, so sort the response to keep it predictable.
         result.sort(Comparator.comparing(Employee::getFullName, String.CASE_INSENSITIVE_ORDER));
         return result;
     }
@@ -50,6 +53,7 @@ public class EmployeeService {
             throw badRequest("Search name is required");
         }
 
+        // Normalize both sides so callers do not need to match capitalization exactly.
         String searchTerm = name.trim().toLowerCase(Locale.ROOT);
         List<Employee> matches = employees.values().stream()
                 .filter(employee -> employee.getFirstName()
@@ -67,11 +71,14 @@ public class EmployeeService {
         validate(request);
 
         UUID uuid = UUID.randomUUID();
+        // Derive this value so it cannot disagree with the supplied first and last names.
+        String fullName =
+                request.getFirstName().trim() + " " + request.getLastName().trim();
         Employee employee = new DefaultEmployee(
                 uuid,
                 request.getFirstName().trim(),
                 request.getLastName().trim(),
-                request.getFirstName().trim() + " " + request.getLastName().trim(),
+                fullName,
                 request.getSalary(),
                 request.getAge(),
                 request.getJobTitle().trim(),
@@ -127,6 +134,7 @@ public class EmployeeService {
         if (request.getContractHireDate() == null) {
             throw badRequest("Contract hire date is required");
         }
+        // A contract cannot end before it begins.
         if (request.getContractTerminationDate() != null
                 && request.getContractTerminationDate().isBefore(request.getContractHireDate())) {
             throw badRequest("Contract termination date cannot be before the hire date");
