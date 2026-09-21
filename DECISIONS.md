@@ -20,11 +20,11 @@ identify an employee produces `404 Not Found`. I used Spring's
 `ResponseStatusException` because the API is small and does not need a separate
 exception hierarchy yet.
 
-I left application logging out of this in-memory version rather than logging
-personal employee data. In production, I would add structured logs for request
-IDs, endpoint names, response status, latency, and failures. UUIDs could be
-logged when needed for investigation, but names, email addresses, and salary
-data should not be included.
+The service logs created employee UUIDs, failed UUID lookups, validation
+reasons, and search result counts. It does not log names, email addresses,
+salaries, or search terms. In production, I would also add request IDs, response
+statuses, and latency so related events could be traced without exposing
+employee data.
 
 ## 4. Where the brief left a decision to you, what did you decide?
 

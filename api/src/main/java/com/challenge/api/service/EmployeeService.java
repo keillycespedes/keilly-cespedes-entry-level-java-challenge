@@ -12,12 +12,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class EmployeeService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EmployeeService.class);
 
     private final Map<UUID, Employee> employees = new ConcurrentHashMap<>();
 
@@ -34,7 +38,11 @@ public class EmployeeService {
     }
 
     public Optional<Employee> getEmployeeByUuid(UUID uuid) {
-        return Optional.ofNullable(employees.get(uuid));
+        Optional<Employee> employee = Optional.ofNullable(employees.get(uuid));
+        if (employee.isEmpty()) {
+            LOGGER.warn("Employee lookup failed for UUID {}", uuid);
+        }
+        return employee;
     }
 
     public List<Employee> searchEmployeesByName(String name) {
@@ -43,7 +51,7 @@ public class EmployeeService {
         }
 
         String searchTerm = name.trim().toLowerCase(Locale.ROOT);
-        return employees.values().stream()
+        List<Employee> matches = employees.values().stream()
                 .filter(employee -> employee.getFirstName()
                                 .toLowerCase(Locale.ROOT)
                                 .contains(searchTerm)
@@ -51,6 +59,8 @@ public class EmployeeService {
                         || employee.getFullName().toLowerCase(Locale.ROOT).contains(searchTerm))
                 .sorted(Comparator.comparing(Employee::getFullName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
+        LOGGER.debug("Employee search returned {} result(s)", matches.size());
+        return matches;
     }
 
     public Employee createEmployee(CreateEmployeeRequest request) {
@@ -70,6 +80,7 @@ public class EmployeeService {
                 request.getContractTerminationDate());
 
         employees.put(uuid, employee);
+        LOGGER.info("Created employee with UUID {}", uuid);
         return employee;
     }
 
@@ -133,6 +144,7 @@ public class EmployeeService {
     }
 
     private ResponseStatusException badRequest(String message) {
+        LOGGER.warn("Rejected employee request: {}", message);
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 }
